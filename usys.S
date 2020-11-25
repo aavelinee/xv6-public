@@ -29,3 +29,10 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
+#Start####################################
+SYSCALL(invoked_syscalls)
+SYSCALL(get_count)
+SYSCALL(sort_syscalls)
+SYSCALL(log_syscalls)
+SYSCALL(inc_num)
+#End######################################

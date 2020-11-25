@@ -120,6 +120,13 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+//Start////////////////////////////////////////////////////////////////////////////////////
+void			invoked_syscalls(int);
+void			sort_syscalls(int);
+void			get_count(int, int);
+void			log_syscalls(void);
+void			inc_num(int);
+//End//////////////////////////////////////////////////////////////////////////////////////
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -155,6 +162,12 @@ int             argstr(int, char**);
 int             fetchint(uint, int*);
 int             fetchstr(uint, char**);
 void            syscall(void);
+// start////////////////////////////////
+void fill_name(int, int, int);
+int getintSize(int);
+void convertIntToString(char[], int );
+
+// end/////////////////////////////////
 
 // timer.c
 void            timerinit(void);

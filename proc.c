@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "date.h"
 
 struct {
   struct spinlock lock;
@@ -17,7 +18,6 @@ static struct proc *initproc;
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
-
 static void wakeup1(void *chan);
 
 void
@@ -516,7 +516,8 @@ procdump(void)
   char *state;
   uint pc[10];
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
     if(p->state == UNUSED)
       continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
@@ -528,7 +529,156 @@ procdump(void)
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
+    // ctrl + p////////////////////////////////////////////////
+      // start////////////////////////////////////////////////
+      int show_couter = 0;
+      for(int i =0; i< NPROC; i++)
+        {
+          if(system_calls[i][1].pid == p->pid)
+          {
+            for(int j =0; j < NSYS; j++)
+            {
+              show_couter += system_calls[i][j].counter;
+            }
+          }
+
+        }
+        cprintf("number of system calls for process %d is: %d\n" , p->pid , show_couter);
+        // end//////////////////////////////////////////////
     }
     cprintf("\n");
   }
 }
+
+//Start//////////////////////////////////////////////////////////////////////////////////////////////////// 
+
+void 
+invoked_syscalls (int pid)
+{
+  int isPid = 0;
+  for(int i = 0; i < NPROC; i++)
+  {
+    if(system_calls[i][0].pid == pid)
+    {
+      isPid = 1;
+      for (int j = 0 ; j < NSYS; j++)
+      {
+
+        if(system_calls[i][j].counter > 0)
+        {
+          cprintf("\n");
+          cprintf("number of system call: %d\n", j);
+          cprintf("name: %s\n", system_calls[i][j].name);
+          cprintf("pid: %d\n", system_calls[i][j].pid);
+
+          for(int k = 0 ; k < system_calls[i][j].time_index; k++)
+          {
+
+            cprintf("in %dth call of this system call\t" , k + 1);
+            if((strncmp(system_calls[i][j].arguments[k][0]->type , "\0" , strlen("\0")) )!= 0 )
+            {
+              cprintf("number of calls: %d\n", system_calls[i][j].counter);
+              cprintf("arg1: %s\t", system_calls[i][j].arguments[k][0]->type);
+              cprintf( "%d\n", system_calls[i][j].arguments[k][0]->int_value);
+              cprintf( "%s\n", system_calls[i][j].arguments[k][0]->char_value);
+              
+            }
+            if((strncmp(system_calls[i][j].arguments[k][1]->type , "\0" , strlen("\0"))) != 0)
+            {
+              cprintf("arg2: %s\t", system_calls[i][j].arguments[k][1]->type);
+              cprintf( "%d\n", system_calls[i][j].arguments[k][1]->int_value);
+              cprintf( "charrrr value%s\n", system_calls[i][j].arguments[k][1]->char_value);
+              
+            }
+            if((strncmp(system_calls[i][j].arguments[k][2]->type , "\0" , strlen("\0"))) !=0)
+            {
+              cprintf("arg3: %s\t", system_calls[i][j].arguments[k][2]->type);
+              cprintf( "%d\n", system_calls[i][j].arguments[k][2]->int_value);
+              cprintf( "%s\n", system_calls[i][j].arguments[k][2]->char_value);
+              
+            }
+            cprintf("Time(Year : %d, Month : %d , Day : %d , Hour : %d , Minute : %d)\n", 
+            system_calls[i][j].time[k]->year, system_calls[i][j].time[k]->month, system_calls[i][j].time[k]->day,
+            system_calls[i][j].time[k]->hour, system_calls[i][j].time[k]->minute);
+
+          }          
+        }
+
+      }
+      break;
+    }
+  }
+
+  if(isPid == 0)
+  {
+    cprintf("Process not found\n");
+  }
+}
+
+void
+sort_syscalls (int pid)
+{
+  int isPid = 0;
+  for(int i = 0 ; i < NPROC; i++)
+  {
+    if(system_calls[i][0].pid == pid)
+    {
+      isPid = 1;
+    }
+  }
+
+  if (isPid == 0)
+  {
+    cprintf("Process not found\n");
+  }
+}
+
+void
+get_count (int pid, int sys_num)
+{
+  int isPid = 0;
+  for(int i=0; i<NPROC; i++)
+  {
+    if(system_calls[i][0].pid == pid)
+    {
+      isPid = 1;
+      if(system_calls[i][sys_num-1].counter == 0)
+      {
+        cprintf("This system call not called\n");
+      }
+      else
+        cprintf("number of system call %d in process %d is : %d\n", 
+          sys_num, pid, system_calls[i][sys_num-1].counter);
+    }
+  }
+  
+  if (isPid == 0)
+  {
+    cprintf("Process not found\n");
+
+  }
+}
+
+void
+log_syscalls (void)
+{
+  for(int i=0; i<total_counter; i++)
+  {
+    // cprintf("%d\n", log_info[i].pid );
+    if(log_info[i].is_killed == 0 && log_info[i].pid > 0) 
+    {
+      cprintf("Name: %s Time(Year : %d, Month : %d , Day : %d , Hour : %d , Minute : %d , Second : %d) pid : %d\n", 
+      log_info[i].name, log_info[i].time->year, log_info[i].time->month, log_info[i].time->day,
+      log_info[i].time->hour, log_info[i].time->minute, log_info[i].time->second, 
+      log_info[i].pid);
+    }
+  }
+}
+
+void
+inc_num(int num)
+{
+  num += 1;
+  cprintf("num = %d\n", num);
+}
+//End////////////////////////////////////////////////////////////////////////////////////////////////////

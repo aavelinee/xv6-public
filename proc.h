@@ -24,6 +24,10 @@ extern int ncpu;
 // The layout of the context matches the layout of the stack in swtch.S
 // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
 // but it is on the stack and allocproc() manipulates it.
+
+enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+
+
 struct context {
   uint edi;
   uint esi;
@@ -32,7 +36,42 @@ struct context {
   uint eip;
 };
 
-enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+//Start////////////////////////////////////////////////////////////////////////////////////////////
+struct argument{
+  char *type;
+  int int_value;
+  char char_value[10];
+};
+struct syscall {
+  char* name;
+  int number;
+  struct rtcdate* time[TSIZE];
+  int time_index;
+  int counter;
+  int pid;
+  struct argument *arguments[TSIZE][3];
+};
+
+struct syscall system_calls[NPROC][NSYS];
+
+int index_of_syscall_ftm;
+int index_of_process_aln;
+
+
+
+struct info_for_log
+{
+  int pid;
+  struct rtcdate* time;
+  char* name;
+  int is_killed;
+};
+
+struct info_for_log log_info[NLOG];
+int total_counter;
+
+// End ///////////////////////////////////////////////////////////////////////
+
 
 // Per-process state
 struct proc {
@@ -50,6 +89,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 };
+
 
 // Process memory is laid out contiguously, low addresses first:
 //   text
