@@ -34,10 +34,14 @@ acquiresleep(struct sleeplock *lk)
 void
 releasesleep(struct sleeplock *lk)
 {
+  struct proc *p = myproc();
   acquire(&lk->lk);
-  lk->locked = 0;
-  lk->pid = 0;
-  wakeup(lk);
+  if(p->pid == lk->pid)
+  {
+    lk->locked = 0;
+    lk->pid = 0;
+    wakeup(lk);
+  }
   release(&lk->lk);
 }
 
