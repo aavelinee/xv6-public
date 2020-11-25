@@ -12,9 +12,23 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
+///////////////////////////////////////////////////////////start
+// int creation_time_list[128];
+// int time_index = 0;
+
+int queue1_size;
+int queue2_size;
+int queue3_size;
+int counter = 1;
+// int lotteries;
+///////////////////////////////////////////////////////////end
+
+
 static struct proc *initproc;
 
 int nextpid = 1;
+int nextxaxis = 0;
+
 extern void forkret(void);
 extern void trapret(void);
 
@@ -55,7 +69,8 @@ mycpu(void)
 // Disable interrupts so that we are not rescheduled
 // while reading proc from the cpu structure
 struct proc*
-myproc(void) {
+myproc(void) 
+{
   struct cpu *c;
   struct proc *p;
   pushcli();
@@ -70,6 +85,127 @@ myproc(void) {
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
 // Otherwise return 0.
+
+//////////////////////////////////////////////////////////////////////start
+//system call to give a process special priority
+void
+print_creation_time(void)
+{
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->pid != 0)
+      cprintf("%d\t" , p->xaxis);
+  }
+  cprintf("\n");
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->pid != 0)
+      cprintf("%d\t" , p->creation_time);
+  }
+}
+void
+set_priority(int pid,int number)
+{
+  acquire(&ptable.lock);
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->pid == pid)
+    {
+      p->priority = number;
+      // cprintf("----------------------in the set_priority with pid : %d priority: %d\n",p->pid , p->priority);
+    }
+  }
+  release(&ptable.lock);
+}
+
+void
+set_lottery(int pid, int ticket_count)
+{
+  acquire(&ptable.lock);
+  struct proc* p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->pid == pid)
+      break;
+  }
+  p->lottery_count = ticket_count;
+  // cprintf("------------------------in the set_lottery with pid : %d lottery: %d\n",p->pid , p->lottery_count);
+  release(&ptable.lock);
+}
+
+void
+set_queue_level(int pid, int level)
+{
+  acquire(&ptable.lock);
+  struct proc* p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->pid == pid)
+    {
+      if(p->queue_level == 1)
+      {
+        queue1_size--;
+        // cprintf("process %d exit from queue %d\n" , pid , p->queue_level);
+      }
+      else if(p->queue_level == 2)
+        queue2_size--;
+      else if(p->queue_level == 3)
+        queue3_size--;
+      if(level == 1)
+        queue1_size++;
+      else if(level == 2)
+        queue2_size++;
+      else if(level == 3)
+        queue3_size++;
+      p->queue_level = level;
+      // cprintf("pid %d in the set_queue_level : level : %d\n", p->pid, p->queue_level);
+      break;
+    }
+  }
+  release(&ptable.lock);
+}
+int
+get_queue_level(int pid)
+{
+  struct proc* p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->pid == pid)
+      return p->queue_level;
+  }
+  return -1;
+}
+
+void
+process_info(void)
+{
+  struct proc* p;
+  static char *states[] = {
+  [UNUSED]    "unused",
+  [EMBRYO]    "embryo",
+  [SLEEPING]  "sleep ",
+  [RUNNABLE]  "runble",
+  [RUNNING]   "run   ",
+  [ZOMBIE]    "zombie"
+  };
+  char *state;
+  cprintf("name\tpid\tstate\tqueue level\tpriority\tlottery count\tcreation time\n");
+  cprintf("--------------------------------------------------------------------------------------------\n");
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    state = states[p->state];
+    if(p->pid != 0)
+    cprintf("%s\t %d\t%s\t    %d\t\t   %d  \t\t%d\t\t   %d\n",p->name , p->pid , state , p->queue_level , p->priority
+      , p->lottery_count , p->creation_time);
+
+  }
+
+}
+//////////////////////////////////////////////////////////////////////end
+
 static struct proc*
 allocproc(void)
 {
@@ -85,9 +221,32 @@ allocproc(void)
   release(&ptable.lock);
   return 0;
 
+
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  if(nextpid > 2)
+    p->xaxis = nextxaxis++;
+
+  ///////////////////////////////////////////////////////////////////////start
+  p->priority = 20;
+  counter++;
+
+  p->queue_level = 1; //processes made by allocproc placed in 3rd queue
+  queue1_size++;
+
+  // cprintf("in the alloc : %d\n", p->pid);
+
+  p->lottery_count = 10;
+  // creation_time_list[time_index] = ticks;
+  // time_index ++;
+  p->creation_time = ticks + p->pid; //sys_uptime();
+  // for(int i = 0; i < 128; i++)
+  // {
+
+  // }
+
+  //////////////////////////////////////////////////////////////////////end
 
   release(&ptable.lock);
 
@@ -229,10 +388,41 @@ exit(void)
 {
   struct proc *curproc = myproc();
   struct proc *p;
+  //////////////////////////////////////////////////
+  struct proc *t;
+  /////////////////////////////////////////////////
   int fd;
 
   if(curproc == initproc)
     panic("init exiting");
+
+  ////////////////////////////////////////////////////////////////start
+  if(curproc->queue_level == 1)
+  {
+    for(t = ptable.proc; t < &ptable.proc[NPROC]; t++)
+    {
+      if(t->queue_level == 1)
+      {
+        if(t->lottery_start > curproc->lottery_end)
+        {
+          t->lottery_start -= curproc->lottery_count;
+          t->lottery_end -= curproc->lottery_count;
+        }
+      }
+    }
+  }
+
+  // lotteries -= curproc->lottery_count;
+
+  if(curproc->queue_level == 1)
+    queue1_size--;
+  else if(curproc->queue_level == 2)
+    queue2_size--;
+  else if(curproc->queue_level == 3)
+    queue3_size--;
+
+  // cprintf("before exit, priority: %d  pid: %d\n", curproc->priority, curproc->pid);
+  ////////////////////////////////////////////////////////////////end
 
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){
@@ -263,6 +453,7 @@ exit(void)
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
+
   sched();
   panic("zombie exit");
 }
@@ -319,37 +510,244 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
+
+///////////////////////////////////////////////////////////////////start
+int
+minimum_priority()
+{
+  // acquire(&ptable.lock);
+
+  int min_priority = 9999999;
+  struct proc *p;
+  struct proc *min_proc;
+  min_proc = ptable.proc;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->state == RUNNABLE && p->queue_level == 3)
+    {
+      if(p->priority < min_priority)
+      {
+        min_priority = p->priority;
+        min_proc = p;
+      }
+      else if(p->priority == min_priority)
+      {
+        if(p->creation_time < min_proc->creation_time)
+        {
+          min_priority = p->priority;
+          min_proc = p;
+        }
+      }
+    }
+  }
+
+  // release(&ptable.lock);
+
+  return min_priority;
+}
+
+int
+minimum_creation_time()
+{
+  int min_time = 99999999;
+  struct proc *p;
+  struct proc *min_proc;
+  min_proc = ptable.proc;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->state == RUNNABLE && p->queue_level == 2)
+    {
+      if(p->creation_time < min_time)
+      {
+        min_time = p->creation_time;
+        min_proc = p;
+      }
+      else if(p->creation_time == min_time)
+      {
+        if(p->pid < min_proc->pid)
+        {
+          min_time = p->priority;
+          min_proc = p;
+        }
+      }
+    }
+  }
+  return min_time;
+}
+
+int rand()
+{
+  static int next = 3251 ; // Anything you like here - but not
+                           // 0000, 0100, 2500, 3792, 7600,
+                           // 0540, 2916, 5030 or 3009.
+  next = ((next * next) / 100 ) % 10000 ;
+  return next ;
+}
+
+int 
+randInRange(int min, int max)
+{
+  return rand() % (max+1-min) + min ; 
+}
+
+////////////////////////////////////////////////////////////////////end
+
 void
 scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
+  int rand_number;
   c->proc = 0;
   
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
+    int is_in_first_queue = 0;
+    int is_in_second_queue = 0;
+    int sum_lotteries = 0;
+
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+//////////////////////////////////////////////////////////////////////////start
+    if(queue1_size>0)
+    {
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
+        if(p->state != RUNNABLE || p->queue_level != 1)
+          continue;
+        sum_lotteries += p->lottery_count;
+      }
+      rand_number = randInRange(0, sum_lotteries);
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+        if(p->state != RUNNABLE || p->queue_level != 1)
+          continue;
+        else
+        {
+          // cprintf("rand : %d\n", rand_number);
+          // cprintf("lottery_count :: %d && pid :: %d\n", p->lottery_count, p->pid);
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+          rand_number -= p->lottery_count;
+          if(rand_number > 0)
+          {
+          //   cprintf("pid : %d - lottery : %d\n", p->pid, p->lottery_count);
+          //   cprintf("rand : %d\n", rand_number);
+            // cprintf("rand %d\n", rand_number);
+            continue;
+          }
+          else
+          {
+            // cprintf("rand number :: %d\n", rand_number);
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+
+            c->proc = p;
+            is_in_first_queue = 1;
+            // Switch to chosen process.  It is the process's job
+            // to release ptable.lock and then reacquire it
+            // before jumping back to us.
+            switchuvm(p);
+            p->state = RUNNING;
+
+            swtch(&(c->scheduler), p->context);
+            switchkvm();
+
+            //////////////////////////////////////////////////////////////////////start
+            // cprintf("queue1_size : %d\n", queue1_size);
+            // cprintf("queue 1 : ##cpu %d allocated to process with pid = %d\n" ,c->apicid, p->pid);
+            //////////////////////////////////////////////////////////////////////end
+
+            // Process is done running for now.
+            // It should have changed its p->state before coming back.
+            c->proc = 0;
+            break;          
+          }
+        }
+        
+      }
     }
+
+    if(queue2_size>0 && is_in_first_queue == 0)
+    {
+
+      // cprintf("*******in the second for : pid -> :\n");
+      int min_creation_time = minimum_creation_time();
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
+        if(p->state != RUNNABLE || p->queue_level != 2)
+        {
+          continue;
+        }
+        else
+        {
+          if(p->creation_time != min_creation_time)
+          {
+            continue;
+          }
+        }
+
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        //////////////////////////////////////////////////////////////////////start
+        // cprintf("queue 2 : ##cpu %d allocated to process with pid = %d\n" ,c->apicid, p->pid);
+        // cprintf("queue 2 : queue_level : %d\n", p->queue_level);
+        //////////////////////////////////////////////////////////////////////end
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+        is_in_second_queue = 1;
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+        break;
+      }
+    }
+
+    if(queue3_size>0 && is_in_first_queue == 0 && is_in_second_queue == 0)
+    {
+      int min_priority = minimum_priority();
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
+        if(p->state != RUNNABLE || p->queue_level != 3)
+          continue;
+        else
+        {
+          if(p->priority != min_priority)
+          {
+            continue;
+          }
+        }
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        //////////////////////////////////////////////////////////////////////start
+        // cprintf("queue 3 : ##cpu %d allocated to process with pid = %d\n" ,c->apicid, p->pid);
+        // cprintf("queue 3 : **************%d\n" ,p->priority);
+        //////////////////////////////////////////////////////////////////////end
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+        break;
+      }
+    }
+/////////////////////////////////////////////////////////////////////////////end
     release(&ptable.lock);
 
   }
@@ -386,7 +784,17 @@ void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
-  myproc()->state = RUNNABLE;
+  struct proc *p;
+  p = myproc();
+  p->state = RUNNABLE;
+  //////////////////////////////////////////////////////////////start
+  // if(p->queue_level == 1)
+  //   queue1_size++;
+  // else if(p->queue_level == 2)
+  //   queue2_size++;
+  // else if(p->queue_level == 3)
+  //   queue3_size++;
+  //////////////////////////////////////////////////////////////end
   sched();
   release(&ptable.lock);
 }
@@ -436,8 +844,18 @@ sleep(void *chan, struct spinlock *lk)
     release(lk);
   }
   // Go to sleep.
+  // cprintf("in the sleep with pid : %d\n", p->pid);
   p->chan = chan;
   p->state = SLEEPING;
+  // lotteries -= p->lottery_count;
+  /////////////////////////////////////////////////////////////////////start
+  // if(p->queue_level == 1)
+  //   queue1_size--;
+  // else if(p->queue_level == 2)
+  //   queue2_size--;
+  // else if(p->queue_level == 3)
+  //   queue3_size--;
+  /////////////////////////////////////////////////////////////////////end
 
   sched();
 
@@ -461,7 +879,19 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
+    {
+      // cprintf("in the wakeup1 with pid : %d\n", p->pid);
       p->state = RUNNABLE;
+      // lotteries += p->lottery_count;
+    }
+  //////////////////////////////////////////////////////////////start
+    // if(p->queue_level == 1)
+    //   queue1_size++;
+    // else if(p->queue_level == 2)
+    //   queue2_size++;
+    // else if(p->queue_level == 3)
+    //   queue3_size++;
+  //////////////////////////////////////////////////////////////end
 }
 
 // Wake up all processes sleeping on chan.
@@ -488,6 +918,7 @@ kill(int pid)
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
         p->state = RUNNABLE;
+      ////////////////////////////////////////////////////////////////////////////////////  
       release(&ptable.lock);
       return 0;
     }

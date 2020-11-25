@@ -23,6 +23,15 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+//////////////////////////////////////////////////////////////////////start
+void set_priority(int , int);
+void set_lottery(int, int);
+void set_queue_level(int, int);
+int get_queue_level(int);
+void process_info(void);
+void print_creation_time(void);
+
+//////////////////////////////////////////////////////////////////////end
 
 // ulib.c
 int stat(const char*, struct stat*);

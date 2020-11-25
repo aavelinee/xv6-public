@@ -7,6 +7,69 @@
 #include "mmu.h"
 #include "proc.h"
 
+
+////////////////////////////////////////////////////////////////////////start
+int
+sys_print_creation_time(void)
+{
+  print_creation_time();
+  return 0;
+}
+
+int
+sys_set_priority(void)
+{
+  int tpid;
+  int tpriority;
+  if(argint(0, &tpid) < 0)
+    return -1;
+  if(argint(1, &tpriority) < 0)
+    return -1;
+  set_priority(tpid , tpriority);
+  return 0;
+}
+
+int sys_set_lottery(void)
+{
+  int pid, ticket_count;
+  if(argint(0, &pid) < 0)
+    return -1;
+  if(argint(1, &ticket_count) < 0)
+    return -1;
+  set_lottery(pid, ticket_count);
+  return 0;
+}
+
+int sys_set_queue_level(void)
+{
+  int pid, level;
+  if(argint(0, &pid) < 0)
+    return -1;
+  if(argint(1, &level) < 0)
+    return -1;
+  set_queue_level(pid, level);
+  return 0;
+
+}
+
+int sys_get_queue_level(void)
+{
+  int pid;
+  if(argint(0, &pid) < 0)
+    return -1;
+  get_queue_level(pid);
+  return 0;
+
+}
+int sys_process_info(void)
+{
+  process_info();
+  return 0;
+}
+
+
+////////////////////////////////////////////////////////////////////////end
+
 int
 sys_fork(void)
 {

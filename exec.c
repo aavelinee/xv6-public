@@ -7,6 +7,12 @@
 #include "x86.h"
 #include "elf.h"
 
+extern int queue1_size;
+extern int queue2_size;
+extern int queue3_size;
+extern void set_lottery_span(int, struct proc*);
+
+
 int
 exec(char *path, char **argv)
 {
@@ -99,6 +105,30 @@ exec(char *path, char **argv)
   curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
+  curproc->queue_level = 1;
+  ////////////////////////////////////////////////////////////////start
+  // if(curproc->queue_level == 2)
+  // {
+  //   queue1_size++;
+  //   queue2_size--;
+  //   curproc->queue_level = 1;
+  // }
+  // else if( curproc->queue_level == 3)
+  // {
+  //   queue1_size++;
+  //   queue3_size--;
+  //   curproc->queue_level = 1;
+
+  // }
+  // else if(curproc->queue_level = 1)
+  //   curproc->queue_level = 1;
+
+  curproc->priority = 1;
+
+  // cprintf("in the exec: %d\n", curproc->pid);
+  curproc->lottery_count = EXECLTICKET;
+
+  ///////////////////////////////////////////////////////////////end
   switchuvm(curproc);
   freevm(oldpgdir);
   return 0;

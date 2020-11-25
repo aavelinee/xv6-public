@@ -120,6 +120,20 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+/////////////////////////////////////////////////////////////start
+int 			minimum_priority(void);
+int 			minimum_creation_time(void);
+int 			rand(void);
+int 			randInRange(int, int);
+void 			set_priority(int , int);
+void			set_lottery(int, int);
+void 			set_queue_level(int, int);
+int 			get_queue_level(int);
+void 			process_info(void);
+void 			print_creation_time(void);
+
+
+/////////////////////////////////////////////////////////////end
 
 // swtch.S
 void            swtch(struct context**, struct context*);
