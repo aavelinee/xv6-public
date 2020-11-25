@@ -6,6 +6,9 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "ticketlock.h"
+#include "rwlock.h"
+
 
 struct {
   struct spinlock lock;
@@ -451,6 +454,93 @@ sleep(void *chan, struct spinlock *lk)
   }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////
+int ticket_cnt;
+void
+ticketsleep(void *chan)
+{
+
+  struct proc *p = myproc();
+  
+  if(p == 0)
+    panic("ticket lock sleep");
+
+  acquire(&ptable.lock);
+  popcli();
+
+  // Go to sleep.
+  p->chan = chan;
+  p->state = SLEEPING;
+  cprintf("process %d slept\n" , myproc()->pid);
+
+  sched();
+
+
+  // Tidy up.
+  p->chan = 0;
+  pushcli();
+  release(&ptable.lock);
+}
+
+
+void
+ticketlockinit(void)
+{
+  initticketlock_func(&tl);
+  ticket_cnt = 0;
+
+}
+
+void 
+ticketlocktest(void)
+{
+  acquireticketlock(&tl);
+    ticket_cnt ++;
+    cprintf("ticket_cnt : %d\n" , ticket_cnt);
+  releaseticketlock(&tl);
+}
+
+int rw_cnt;
+
+void 
+rwinit(void)
+{
+  initrwlock_func(&rwl);
+  rw_cnt = 0;
+}
+
+
+void read()
+{
+  acquirereadlock(&rwl);
+  rw_cnt --;
+  cprintf("read : rw_cnt = %d\n" , rw_cnt);
+  releasereadlock(&rwl);
+
+}
+
+void write()
+{
+  acquirewritelock(&rwl);
+  rw_cnt ++;
+  cprintf("write : rw_cnt = %d\n" , rw_cnt);
+  releasewritelock(&rwl);
+
+}
+
+
+void
+rwtest(int pattern)
+{
+  if(pattern == 0)
+    read();
+  else if (pattern == 1)
+    write();
+      
+}
+///////////////////////////////////////////////////////////////////////////////////////
+
+
 //PAGEBREAK!
 // Wake up all processes sleeping on chan.
 // The ptable lock must be held.
@@ -471,6 +561,7 @@ wakeup(void *chan)
   acquire(&ptable.lock);
   wakeup1(chan);
   release(&ptable.lock);
+
 }
 
 // Kill the process with the given pid.

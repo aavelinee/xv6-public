@@ -9,6 +9,10 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+/////////////////////////////////////////////////////////start
+struct ticketlock;
+struct rwlock;
+//////////////////////////////////////////////////////////end
 
 // bio.c
 void            binit(void);
@@ -120,6 +124,17 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+////////////////////////////////////////////////////////////////////////
+void			ticketsleep(void*);
+void			ticketlockinit(void);
+void			ticketlocktest(void);
+void			rwinit(void);
+void			rwtest(int);
+// function ????
+// int 			dec_to_binary(uint , int[]);
+void 			read(void);
+void 			write();
+///////////////////////////////////////////////////////////////////////
 
 // swtch.S
 void            swtch(struct context**, struct context*);

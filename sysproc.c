@@ -6,6 +6,8 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "ticketlock.h"
+
 
 int
 sys_fork(void)
@@ -77,8 +79,6 @@ sys_sleep(void)
   return 0;
 }
 
-// return how many clock tick interrupts have occurred
-// since start.
 int
 sys_uptime(void)
 {
@@ -89,3 +89,55 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+/////////////////////////////////////////////////////////////////////////
+int
+sys_ticketlockinit(void)
+{
+  ticketlockinit();
+  return 0;
+}
+
+int 
+sys_ticketlocktest(void)
+{
+  acquireticketlock(&tl);
+  uint time1;
+  uint time2;
+  time1 =  sys_uptime();
+  time2 = time1;
+
+  for(;;)
+  {
+    if(time2 - time1 < 50)
+      break;
+    time2 = sys_uptime();
+  }
+
+  releaseticketlock(&tl);
+  return 0;
+}
+
+int
+sys_rwinit(void)
+{
+  rwinit();
+  return 0;
+}
+
+int
+sys_rwtest(void)
+{
+  int pattern;
+  if(argint(0, &pattern) < 0)
+    return -1;
+  rwtest(pattern);
+  return 0;
+
+}
+/////////////////////////////////////////////////////////////////////////
+
+
+// return how many clock tick interrupts have occurred
+// since start.
+

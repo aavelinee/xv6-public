@@ -99,33 +99,45 @@ extern int sys_pipe(void);
 extern int sys_read(void);
 extern int sys_sbrk(void);
 extern int sys_sleep(void);
+///////////////////////////////////////////////////////////////////////////////
+extern int sys_ticketlockinit(void);
+extern int sys_ticketlocktest(void);
+extern int sys_rwinit(void);
+extern int sys_rwtest(void);
+//////////////////////////////////////////////////////////////////////////////
 extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 
 static int (*syscalls[])(void) = {
-[SYS_fork]    sys_fork,
-[SYS_exit]    sys_exit,
-[SYS_wait]    sys_wait,
-[SYS_pipe]    sys_pipe,
-[SYS_read]    sys_read,
-[SYS_kill]    sys_kill,
-[SYS_exec]    sys_exec,
-[SYS_fstat]   sys_fstat,
-[SYS_chdir]   sys_chdir,
-[SYS_dup]     sys_dup,
-[SYS_getpid]  sys_getpid,
-[SYS_sbrk]    sys_sbrk,
-[SYS_sleep]   sys_sleep,
-[SYS_uptime]  sys_uptime,
-[SYS_open]    sys_open,
-[SYS_write]   sys_write,
-[SYS_mknod]   sys_mknod,
-[SYS_unlink]  sys_unlink,
-[SYS_link]    sys_link,
-[SYS_mkdir]   sys_mkdir,
-[SYS_close]   sys_close,
+[SYS_fork]		sys_fork,
+[SYS_exit]		sys_exit,
+[SYS_wait]		sys_wait,
+[SYS_pipe]		sys_pipe,
+[SYS_read]		sys_read,
+[SYS_kill]		sys_kill,
+[SYS_exec]		sys_exec,
+[SYS_fstat]		sys_fstat,
+[SYS_chdir]		sys_chdir,
+[SYS_dup]		sys_dup,
+[SYS_getpid]		sys_getpid,
+[SYS_sbrk]		sys_sbrk,
+[SYS_sleep]		sys_sleep,
+////////////////////////////////////////////////////////////////////////////
+[SYS_ticketlockinit]	sys_ticketlockinit, 
+[SYS_ticketlocktest]  sys_ticketlocktest,
+[SYS_rwinit]          sys_rwinit,
+[SYS_rwtest]          sys_rwtest,
+////////////////////////////////////////////////////////////////////////////
+[SYS_uptime]		sys_uptime,
+[SYS_open]		sys_open,
+[SYS_write]		sys_write,
+[SYS_mknod]		sys_mknod,
+[SYS_unlink]		sys_unlink,
+[SYS_link]		sys_link,
+[SYS_mkdir]		sys_mkdir,
+[SYS_close]		sys_close,
 };
 
 void
